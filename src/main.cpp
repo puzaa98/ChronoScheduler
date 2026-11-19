@@ -18,10 +18,19 @@ void calculateFCFS(vector<Process>& processes) {
     double totalWT = 0;
     double totalTAT = 0;
 
+    cout << "\n--- [DECISION EXPLAINER LOG] ---" << endl;
+
     for (size_t i = 0; i < processes.size(); i++) {
+        
+        // Check for CPU Idle time
         if (currentTime < processes[i].arrivalTime) {
+            cout << "CPU Idle from time " << currentTime << " to " << processes[i].arrivalTime << " (Waiting for P" << processes[i].id << ")." << endl;
             currentTime = processes[i].arrivalTime;
         }
+
+        // Decision Explainer
+        cout << "Time " << currentTime << ": CPU selected P" << processes[i].id 
+             << " (Burst: " << processes[i].burstTime << "). Reason: It is first in the queue (FCFS)." << endl;
 
         processes[i].completionTime = currentTime + processes[i].burstTime;
         processes[i].turnaroundTime = processes[i].completionTime - processes[i].arrivalTime;
@@ -33,7 +42,8 @@ void calculateFCFS(vector<Process>& processes) {
         totalTAT += processes[i].turnaroundTime;
     }
 
-    cout << "\n--- FCFS Scheduling Results ---" << endl;
+    // 1. Print the Table
+    cout << "\n--- FCFS SCHEDULING RESULTS ---" << endl;
     cout << left << setw(10) << "Process" << setw(10) << "Arrival" << setw(10) << "Burst" 
          << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << endl;
 
@@ -44,6 +54,20 @@ void calculateFCFS(vector<Process>& processes) {
 
     cout << "\nAverage Waiting Time: " << (totalWT / processes.size()) << endl;
     cout << "Average Turnaround Time: " << (totalTAT / processes.size()) << endl;
+
+    // 2. Print the Text Gantt Chart
+    cout << "\n--- GANTT CHART ---" << endl;
+    cout << "0 ";
+    for (const auto& p : processes) {
+        cout << "|  P" << p.id << "  |";
+    }
+    cout << endl << "  ";
+    int timeDisplay = 0;
+    for (const auto& p : processes) {
+        timeDisplay += p.burstTime; // Note: this works for FCFS if arrival times are in order
+        cout << left << setw(7) << timeDisplay;
+    }
+    cout << endl;
 }
 
 int main() {
