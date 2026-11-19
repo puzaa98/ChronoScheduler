@@ -13,33 +13,81 @@ struct Process {
     int waitingTime;
 };
 
-void calculateSJF(vector<Process>& processes) {
+// ==========================================
+// 1. FCFS ALGORITHM
+// ==========================================
+void calculateFCFS(vector<Process> processes) {
+    int currentTime = 0;
+    double totalWT = 0;
+    double totalTAT = 0;
+
+    cout << "\n--- [FCFS DECISION EXPLAINER LOG] ---" << endl;
+
+    for (size_t i = 0; i < processes.size(); i++) {
+        if (currentTime < processes[i].arrivalTime) {
+            cout << "CPU Idle from time " << currentTime << " to " << processes[i].arrivalTime << endl;
+            currentTime = processes[i].arrivalTime;
+        }
+
+        cout << "Time " << currentTime << ": CPU selected P" << processes[i].id 
+             << " (Burst: " << processes[i].burstTime << "). Reason: First in queue." << endl;
+
+        processes[i].completionTime = currentTime + processes[i].burstTime;
+        processes[i].turnaroundTime = processes[i].completionTime - processes[i].arrivalTime;
+        processes[i].waitingTime = processes[i].turnaroundTime - processes[i].burstTime;
+
+        currentTime = processes[i].completionTime;
+        totalWT += processes[i].waitingTime;
+        totalTAT += processes[i].turnaroundTime;
+    }
+
+    cout << "\n--- FCFS SCHEDULING RESULTS ---" << endl;
+    cout << left << setw(10) << "Process" << setw(10) << "Arrival" << setw(10) << "Burst" 
+         << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << endl;
+
+    for (const auto& p : processes) {
+        cout << left << "P" << setw(9) << p.id << setw(10) << p.arrivalTime << setw(10) << p.burstTime 
+             << setw(15) << p.completionTime << setw(15) << p.turnaroundTime << setw(10) << p.waitingTime << endl;
+    }
+
+    cout << "\nAverage Waiting Time: " << (totalWT / processes.size()) << endl;
+    cout << "Average Turnaround Time: " << (totalTAT / processes.size()) << endl;
+
+    cout << "\n--- GANTT CHART (FCFS) ---" << endl;
+    cout << "0 ";
+    for (const auto& p : processes) cout << "|  P" << p.id << "  |";
+    cout << endl << "  ";
+    int timeDisplay = 0;
+    for (const auto& p : processes) {
+        timeDisplay += p.burstTime; 
+        cout << left << setw(7) << timeDisplay;
+    }
+    cout << endl;
+}
+
+// ==========================================
+// 2. SJF ALGORITHM
+// ==========================================
+void calculateSJF(vector<Process> processes) {
     int currentTime = 0;
     int completed = 0;
     int n = processes.size();
-    double totalWT = 0;
-    double totalTAT = 0;
-    
-    // To keep track of which processes are finished
+    double totalWT = 0, totalTAT = 0;
     vector<bool> isCompleted(n, false); 
-    
-    // To store the order of execution for the Gantt Chart
     vector<int> executionOrder;
 
-    cout << "\n--- [DECISION EXPLAINER LOG] ---" << endl;
+    cout << "\n--- [SJF DECISION EXPLAINER LOG] ---" << endl;
 
     while (completed != n) {
         int shortestIndex = -1;
         int minBurst = 999999;
 
-        // Find the process with the shortest burst time among arrived processes
         for (int i = 0; i < n; i++) {
             if (processes[i].arrivalTime <= currentTime && !isCompleted[i]) {
                 if (processes[i].burstTime < minBurst) {
                     minBurst = processes[i].burstTime;
                     shortestIndex = i;
                 }
-                // Tie-breaker: If burst times are equal, pick the one that arrived first
                 else if (processes[i].burstTime == minBurst) {
                     if (processes[i].arrivalTime < processes[shortestIndex].arrivalTime) {
                         shortestIndex = i;
@@ -48,19 +96,15 @@ void calculateSJF(vector<Process>& processes) {
             }
         }
 
-        // If no process has arrived yet, CPU is idle
         if (shortestIndex == -1) {
             currentTime++;
             continue;
         }
 
         int idx = shortestIndex;
-
-        // Decision Explainer
         cout << "Time " << currentTime << ": CPU selected P" << processes[idx].id 
-             << " (Burst: " << processes[idx].burstTime << "). Reason: Shortest burst time among available processes." << endl;
+             << " (Burst: " << processes[idx].burstTime << "). Reason: Shortest burst among available." << endl;
 
-        // Calculate metrics
         processes[idx].completionTime = currentTime + processes[idx].burstTime;
         processes[idx].turnaroundTime = processes[idx].completionTime - processes[idx].arrivalTime;
         processes[idx].waitingTime = processes[idx].turnaroundTime - processes[idx].burstTime;
@@ -68,14 +112,12 @@ void calculateSJF(vector<Process>& processes) {
         totalWT += processes[idx].waitingTime;
         totalTAT += processes[idx].turnaroundTime;
 
-        // Update time and mark as completed
         currentTime = processes[idx].completionTime;
         isCompleted[idx] = true;
         completed++;
         executionOrder.push_back(idx);
     }
 
-    // 1. Print the Table
     cout << "\n--- SJF SCHEDULING RESULTS ---" << endl;
     cout << left << setw(10) << "Process" << setw(10) << "Arrival" << setw(10) << "Burst" 
          << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << endl;
@@ -88,12 +130,9 @@ void calculateSJF(vector<Process>& processes) {
     cout << "\nAverage Waiting Time: " << (totalWT / n) << endl;
     cout << "Average Turnaround Time: " << (totalTAT / n) << endl;
 
-    // 2. Print the Gantt Chart
     cout << "\n--- GANTT CHART (SJF) ---" << endl;
     cout << "0 ";
-    for (int idx : executionOrder) {
-        cout << "|  P" << processes[idx].id << "  |";
-    }
+    for (int idx : executionOrder) cout << "|  P" << processes[idx].id << "  |";
     cout << endl << "  ";
     int timeDisplay = 0;
     for (int idx : executionOrder) {
@@ -103,6 +142,9 @@ void calculateSJF(vector<Process>& processes) {
     cout << endl;
 }
 
+// ==========================================
+// MAIN FUNCTION (The Menu)
+// ==========================================
 int main() {
     int n;
     cout << "Enter the number of processes: ";
@@ -118,7 +160,31 @@ int main() {
         cin >> processes[i].burstTime;
     }
 
-    calculateSJF(processes);
+    int choice;
+    do {
+        cout << "\n===================================" << endl;
+        cout << "   CHRONOSCHEDULER - MAIN MENU" << endl;
+        cout << "===================================" << endl;
+        cout << "1. Run FCFS Algorithm" << endl;
+        cout << "2. Run SJF Algorithm" << endl;
+        cout << "0. Exit" << endl;
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1:
+                calculateFCFS(processes);
+                break;
+            case 2:
+                calculateSJF(processes);
+                break;
+            case 0:
+                cout << "Exiting ChronoScheduler. Goodbye!" << endl;
+                break;
+            default:
+                cout << "Invalid choice. Please try again." << endl;
+        }
+    } while (choice != 0);
 
     return 0;
 }
