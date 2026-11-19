@@ -13,37 +13,70 @@ struct Process {
     int waitingTime;
 };
 
-void calculateFCFS(vector<Process>& processes) {
+void calculateSJF(vector<Process>& processes) {
     int currentTime = 0;
+    int completed = 0;
+    int n = processes.size();
     double totalWT = 0;
     double totalTAT = 0;
+    
+    // To keep track of which processes are finished
+    vector<bool> isCompleted(n, false); 
+    
+    // To store the order of execution for the Gantt Chart
+    vector<int> executionOrder;
 
     cout << "\n--- [DECISION EXPLAINER LOG] ---" << endl;
 
-    for (size_t i = 0; i < processes.size(); i++) {
-        
-        // Check for CPU Idle time
-        if (currentTime < processes[i].arrivalTime) {
-            cout << "CPU Idle from time " << currentTime << " to " << processes[i].arrivalTime << " (Waiting for P" << processes[i].id << ")." << endl;
-            currentTime = processes[i].arrivalTime;
+    while (completed != n) {
+        int shortestIndex = -1;
+        int minBurst = 999999;
+
+        // Find the process with the shortest burst time among arrived processes
+        for (int i = 0; i < n; i++) {
+            if (processes[i].arrivalTime <= currentTime && !isCompleted[i]) {
+                if (processes[i].burstTime < minBurst) {
+                    minBurst = processes[i].burstTime;
+                    shortestIndex = i;
+                }
+                // Tie-breaker: If burst times are equal, pick the one that arrived first
+                else if (processes[i].burstTime == minBurst) {
+                    if (processes[i].arrivalTime < processes[shortestIndex].arrivalTime) {
+                        shortestIndex = i;
+                    }
+                }
+            }
         }
 
+        // If no process has arrived yet, CPU is idle
+        if (shortestIndex == -1) {
+            currentTime++;
+            continue;
+        }
+
+        int idx = shortestIndex;
+
         // Decision Explainer
-        cout << "Time " << currentTime << ": CPU selected P" << processes[i].id 
-             << " (Burst: " << processes[i].burstTime << "). Reason: It is first in the queue (FCFS)." << endl;
+        cout << "Time " << currentTime << ": CPU selected P" << processes[idx].id 
+             << " (Burst: " << processes[idx].burstTime << "). Reason: Shortest burst time among available processes." << endl;
 
-        processes[i].completionTime = currentTime + processes[i].burstTime;
-        processes[i].turnaroundTime = processes[i].completionTime - processes[i].arrivalTime;
-        processes[i].waitingTime = processes[i].turnaroundTime - processes[i].burstTime;
+        // Calculate metrics
+        processes[idx].completionTime = currentTime + processes[idx].burstTime;
+        processes[idx].turnaroundTime = processes[idx].completionTime - processes[idx].arrivalTime;
+        processes[idx].waitingTime = processes[idx].turnaroundTime - processes[idx].burstTime;
 
-        currentTime = processes[i].completionTime;
+        totalWT += processes[idx].waitingTime;
+        totalTAT += processes[idx].turnaroundTime;
 
-        totalWT += processes[i].waitingTime;
-        totalTAT += processes[i].turnaroundTime;
+        // Update time and mark as completed
+        currentTime = processes[idx].completionTime;
+        isCompleted[idx] = true;
+        completed++;
+        executionOrder.push_back(idx);
     }
 
     // 1. Print the Table
-    cout << "\n--- FCFS SCHEDULING RESULTS ---" << endl;
+    cout << "\n--- SJF SCHEDULING RESULTS ---" << endl;
     cout << left << setw(10) << "Process" << setw(10) << "Arrival" << setw(10) << "Burst" 
          << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << endl;
 
@@ -52,19 +85,19 @@ void calculateFCFS(vector<Process>& processes) {
              << setw(15) << p.completionTime << setw(15) << p.turnaroundTime << setw(10) << p.waitingTime << endl;
     }
 
-    cout << "\nAverage Waiting Time: " << (totalWT / processes.size()) << endl;
-    cout << "Average Turnaround Time: " << (totalTAT / processes.size()) << endl;
+    cout << "\nAverage Waiting Time: " << (totalWT / n) << endl;
+    cout << "Average Turnaround Time: " << (totalTAT / n) << endl;
 
-    // 2. Print the Text Gantt Chart
-    cout << "\n--- GANTT CHART ---" << endl;
+    // 2. Print the Gantt Chart
+    cout << "\n--- GANTT CHART (SJF) ---" << endl;
     cout << "0 ";
-    for (const auto& p : processes) {
-        cout << "|  P" << p.id << "  |";
+    for (int idx : executionOrder) {
+        cout << "|  P" << processes[idx].id << "  |";
     }
     cout << endl << "  ";
     int timeDisplay = 0;
-    for (const auto& p : processes) {
-        timeDisplay += p.burstTime; // Note: this works for FCFS if arrival times are in order
+    for (int idx : executionOrder) {
+        timeDisplay = processes[idx].completionTime;
         cout << left << setw(7) << timeDisplay;
     }
     cout << endl;
@@ -85,7 +118,7 @@ int main() {
         cin >> processes[i].burstTime;
     }
 
-    calculateFCFS(processes);
+    calculateSJF(processes);
 
     return 0;
 }
