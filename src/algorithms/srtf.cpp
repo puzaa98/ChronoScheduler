@@ -2,6 +2,7 @@
 #include <vector>
 #include <iomanip>
 #include <climits>
+#include <algorithm>
 
 using namespace std;
 
@@ -16,6 +17,9 @@ struct Process {
     int turnaroundTime;
     int waitingTime;
     int responseTime;
+    int preemptCount;
+    int consecutiveWait;
+    int agingBoost;
     bool started;
 };
 
@@ -25,7 +29,7 @@ struct GanttBlock {
     int end;
 };
 
-void calculateSRTF(vector<Process> processes) {
+void calculateSRTF(vector<Process> processes, int agingThreshold = 4) {
     int n = processes.size();
     int currentTime = 0;
     int completed = 0;
@@ -41,6 +45,9 @@ void calculateSRTF(vector<Process> processes) {
         p.turnaroundTime = 0;
         p.waitingTime = 0;
         p.responseTime = -1;
+        p.preemptCount = 0;
+        p.consecutiveWait = 0;
+        p.agingBoost = 0;
         p.started = false;
     }
 
@@ -76,6 +83,16 @@ void calculateSRTF(vector<Process> processes) {
             } else {
                 gantt.push_back({-1, currentTime, currentTime + 1});
             }
+
+            for (int i = 0; i < n; i++) {
+                if (processes[i].arrivalTime < currentTime && processes[i].remainingTime > 0) {
+                    processes[i].consecutiveWait++;
+                    if (agingThreshold > 0 && processes[i].consecutiveWait % agingThreshold == 0) {
+                        processes[i].agingBoost++;
+                    }
+                }
+            }
+
             currentTime++;
             continue;
         }
@@ -88,6 +105,12 @@ void calculateSRTF(vector<Process> processes) {
 
         if (processes[idx].id != lastPid) {
             if (lastPid > 0) {
+                for (int i = 0; i < n; i++) {
+                    if (processes[i].id == lastPid && processes[i].remainingTime > 0) {
+                        processes[i].preemptCount++;
+                        break;
+                    }
+                }
                 cout << "Time " << currentTime << ": CPU switched to P" << processes[idx].id
                      << " (Remaining: " << processes[idx].remainingTime
                      << "). Reason: Shortest remaining burst among ready processes (preemption)." << endl;
@@ -105,7 +128,21 @@ void calculateSRTF(vector<Process> processes) {
             gantt.push_back({processes[idx].id, currentTime, currentTime + 1});
         }
 
+        // Update waiting & aging counters for ready processes not currently running
+        for (int i = 0; i < n; i++) {
+            if (i != idx && processes[i].arrivalTime <= currentTime && processes[i].remainingTime > 0) {
+                processes[i].consecutiveWait++;
+                if (agingThreshold > 0 && processes[i].consecutiveWait % agingThreshold == 0) {
+                    processes[i].agingBoost++;
+                    cout << "Time " << (currentTime + 1) << ": Aging alert for P" << processes[i].id
+                         << " (waited " << processes[i].consecutiveWait << " ticks -> aging boost +"
+                         << processes[i].agingBoost << ")." << endl;
+                }
+            }
+        }
+
         processes[idx].remainingTime--;
+        processes[idx].consecutiveWait = 0;
         currentTime++;
 
         if (processes[idx].remainingTime == 0) {
@@ -138,6 +175,30 @@ void calculateSRTF(vector<Process> processes) {
     cout << "\nAverage Waiting Time: " << (totalWT / n) << endl;
     cout << "Average Turnaround Time: " << (totalTAT / n) << endl;
     cout << "Average Response Time: " << (totalRT / n) << endl;
+
+    cout << "\n--- FAIRNESS & AGING ANALYSIS (SRTF) ---" << endl;
+    cout << left << setw(10) << "Process" << setw(10) << "Waiting" << setw(12) << "Preempts"
+         << setw(14) << "AgingBoost" << setw(24) << "Fairness Status" << endl;
+
+    int maxWT = 0, minWT = INT_MAX;
+    for (const auto& p : processes) {
+        maxWT = max(maxWT, p.waitingTime);
+        minWT = min(minWT, p.waitingTime);
+
+        string status = "Fair";
+        if (p.waitingTime >= agingThreshold * 2 || p.preemptCount >= 2) {
+            status = "High Wait / Preempted";
+        } else if (p.agingBoost > 0) {
+            status = "Aged (Boost Eligible)";
+        }
+
+        cout << left << "P" << setw(9) << p.id << setw(10) << p.waitingTime << setw(12) << p.preemptCount
+             << setw(14) << ("+" + to_string(p.agingBoost)) << setw(24) << status << endl;
+    }
+
+    cout << "Wait Time Spread (Max - Min): " << (maxWT - minWT) << endl;
+    cout << "Note: In pure SRTF, long jobs can be repeatedly preempted by shorter arrivals; "
+         << "tracking aging boosts helps identify long-waiting processes for fairness review." << endl;
 
     cout << "\n--- GANTT CHART (SRTF) ---" << endl;
     for (const auto& g : gantt) {
