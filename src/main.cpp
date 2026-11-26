@@ -1,49 +1,67 @@
 #include <iostream>
 #include <vector>
+#include <string>
+#include <sstream>
+#include "../include/httplib.h"
 #include "../include/algorithms.h"
 
 using namespace std;
 
 int main() {
-    int n;
-    cout << "Enter the number of processes: ";
-    cin >> n;
+    httplib::Server svr;
 
-    vector<Process> processes(n);
+    svr.Post("/run", [](const httplib::Request& req, httplib::Response& res) {
+        string body = req.body;
+        
+        // The frontend sends: "algo|arrival,burst;arrival,burst"
+        size_t delimiterPos = body.find('|');
+        string algo = body.substr(0, delimiterPos);
+        string dataStr = body.substr(delimiterPos + 1);
 
-    for (int i = 0; i < n; i++) {
-        processes[i].id = i + 1;
-        cout << "Enter Arrival Time for P" << i + 1 << ": ";
-        cin >> processes[i].arrivalTime;
-        cout << "Enter Burst Time for P" << i + 1 << ": ";
-        cin >> processes[i].burstTime;
-    }
+        vector<Process> processes;
+        stringstream ss(dataStr);
+        string processStr;
+        int id = 1;
 
-    int choice;
-    do {
-        cout << "\n===================================" << endl;
-        cout << "   CHRONOSCHEDULER - MAIN MENU" << endl;
-        cout << "===================================" << endl;
-        cout << "1. Run FCFS Algorithm" << endl;
-        cout << "2. Run SJF Algorithm" << endl;
-        cout << "0. Exit" << endl;
-        cout << "Enter your choice: ";
-        cin >> choice;
+        while (getline(ss, processStr, ';')) {
+            stringstream pss(processStr);
+            string arrivalStr, burstStr;
+            getline(pss, arrivalStr, ',');
+            getline(pss, burstStr, ',');
 
-        switch (choice) {
-            case 1:
-                calculateFCFS(processes);
-                break;
-            case 2:
-                calculateSJF(processes);
-                break;
-            case 0:
-                cout << "Exiting ChronoScheduler. Goodbye!" << endl;
-                break;
-            default:
-                cout << "Invalid choice. Please try again." << endl;
+            Process p;
+            p.id = id++;
+            p.arrivalTime = stoi(arrivalStr);
+            p.burstTime = stoi(burstStr);
+            processes.push_back(p);
         }
-    } while (choice != 0);
+
+        // THIS IS THE MAGIC TRICK: We capture the output of your C++ functions
+        stringstream buffer;
+        streambuf* oldCout = cout.rdbuf(buffer.rdbuf());
+
+        // Call your real algorithms!
+        if (algo == "fcfs") {
+            calculateFCFS(processes);
+        } else if (algo == "sjf") {
+            calculateSJF(processes);
+        }
+
+        // Restore the normal terminal output
+        cout.rdbuf(oldCout);
+
+        // Get the text that your algorithms printed
+        string outputText = buffer.str();
+
+        // Send it back to the web page
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_content(outputText, "text/plain");
+    });
+
+    cout << "ChronoScheduler Server is running on http://localhost:8080" << endl;
+    cout << "Keep this terminal open while using the GUI." << endl;
+    
+    svr.listen("localhost", 8080);
 
     return 0;
 }

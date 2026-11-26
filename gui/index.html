@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoScheduler | CPU Scheduling Simulator</title>
+    <style>
+        :root {
+            --bg-color: #0B1020;
+            --panel-bg: #151D32;
+            --cyan: #00D9FF;
+            --violet: #8B5CF6;
+            --text-main: #F8FAFC;
+            --text-muted: #A7B0C0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--cyan);
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        p.tagline {
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .dashboard {
+            display: flex;
+            gap: 20px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .left-panel { flex: 1; }
+        .right-panel { flex: 2; display: flex; flex-direction: column; gap: 20px;}
+
+        h2 { margin-top: 0; font-size: 1.2rem; color: var(--violet); }
+
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #2A3655;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input:focus, select:focus { border-color: var(--cyan); }
+
+        button {
+            background-color: var(--cyan);
+            color: var(--bg-color);
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover { background-color: #00b8d4; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #2A3655;
+        }
+
+        th { color: var(--text-muted); font-weight: normal; }
+
+        /* Gantt Chart Container */
+        .gantt-container {
+            min-height: 150px;
+            background-color: var(--bg-color);
+            border-radius: 5px;
+            border: 1px dashed #2A3655;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            margin-top: 10px;
+            padding: 15px;
+        }
+
+        /* Styling for the C++ terminal output */
+        pre {
+            color: var(--cyan);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            text-align: left;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ChronoScheduler</h1>
+    <p class="tagline">Visualize. Compare. Optimize.</p>
+
+    <div class="dashboard">
+        <div class="panel left-panel">
+            <h2>Add Process</h2>
+            <div class="input-group">
+                <label>Algorithm</label>
+                <select id="algorithm">
+                    <option value="fcfs">FCFS (First-Come, First-Served)</option>
+                    <option value="sjf">SJF (Shortest Job First)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Arrival Time</label>
+                <input type="number" id="arrivalTime" placeholder="e.g. 0" min="0">
+            </div>
+            <div class="input-group">
+                <label>Burst Time</label>
+                <input type="number" id="burstTime" placeholder="e.g. 5" min="1">
+            </div>
+            <button onclick="addProcess()">+ Add Process</button>
+            <button onclick="runSimulation()" style="background-color: var(--violet); margin-top: 20px;">▶ Run Simulation</button>
+        </div>
+
+        <div class="panel right-panel">
+            <h2>Process Queue</h2>
+            <table id="processTable">
+                <thead>
+                    <tr>
+                        <th>Process ID</th>
+                        <th>Arrival Time</th>
+                        <th>Burst Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will appear here -->
+                </tbody>
+            </table>
+
+            <h2>Execution Output & Gantt Chart</h2>
+            <div class="gantt-container" id="ganttChart">
+                Awaiting simulation...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let processes = [];
+        let processCount = 1;
+
+        function addProcess() {
+            const arrival = document.getElementById('arrivalTime').value;
+            const burst = document.getElementById('burstTime').value;
+
+            if (arrival === '' || burst === '') {
+                alert("Please enter both Arrival and Burst times!");
+                return;
+            }
+
+            // Add to our array
+            processes.push({
+                id: 'P' + processCount,
+                arrival: parseInt(arrival),
+                burst: parseInt(burst)
+            });
+
+            // Add to the visual table
+            const tbody = document.querySelector('#processTable tbody');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>P${processCount}</td>
+                <td>${arrival}</td>
+                <td>${burst}</td>
+            `;
+            tbody.appendChild(tr);
+
+            // Clear inputs and increase ID counter
+            document.getElementById('arrivalTime').value = '';
+            document.getElementById('burstTime').value = '';
+            processCount++;
+        }
+
+        async function runSimulation() {
+            const algo = document.getElementById('algorithm').value;
+            const gantt = document.getElementById('ganttChart');
+
+            if (processes.length === 0) {
+                alert("Please add some processes first!");
+                return;
+            }
+
+            gantt.innerHTML = `<span style="color: var(--cyan);">Connecting to C++ Backend...</span>`;
+
+            // Prepare data to send to C++ (format: "algo|arrival,burst;arrival,burst")
+            let dataString = algo + "|" + processes.map(p => `${p.arrival},${p.burst}`).join(';');
+
+            try {
+                // Send data to your C++ server
+                const response = await fetch('http://localhost:8080/run', {
+                    method: 'POST',
+                    body: dataString
+                });
+
+                const result = await response.text();
+                
+                // Show the real C++ output formatted nicely
+                gantt.innerHTML = `<pre>${result}</pre>`;
+
+            } catch (error) {
+                gantt.innerHTML = `<span style="color: red;">Error: Is the C++ server running?</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
