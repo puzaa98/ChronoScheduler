@@ -5,7 +5,8 @@
 
 using namespace std;
 
-void calculateSJF(vector<Process> processes) {
+// Added '&' here too
+void calculateSJF(vector<Process>& processes) {
     int currentTime = 0;
     int completed = 0;
     int n = processes.size();
@@ -13,7 +14,6 @@ void calculateSJF(vector<Process> processes) {
     double totalTAT = 0;
     
     vector<bool> isCompleted(n, false); 
-    vector<int> executionOrder;
 
     cout << "\n--- [SJF DECISION EXPLAINER LOG] ---" << endl;
 
@@ -41,9 +41,10 @@ void calculateSJF(vector<Process> processes) {
         }
 
         int idx = shortestIndex;
+        processes[idx].startTime = currentTime;
 
         cout << "Time " << currentTime << ": CPU selected P" << processes[idx].id 
-             << " (Burst: " << processes[idx].burstTime << "). Reason: Shortest burst time among available processes." << endl;
+             << " (Burst: " << processes[idx].burstTime << "). Reason: Shortest burst time." << endl;
 
         processes[idx].completionTime = currentTime + processes[idx].burstTime;
         processes[idx].turnaroundTime = processes[idx].completionTime - processes[idx].arrivalTime;
@@ -55,9 +56,9 @@ void calculateSJF(vector<Process> processes) {
         currentTime = processes[idx].completionTime;
         isCompleted[idx] = true;
         completed++;
-        executionOrder.push_back(idx);
     }
 
+    // Print the Table
     cout << "\n--- SJF SCHEDULING RESULTS ---" << endl;
     cout << left << setw(10) << "Process" << setw(10) << "Arrival" << setw(10) << "Burst" 
          << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << endl;
@@ -69,17 +70,4 @@ void calculateSJF(vector<Process> processes) {
 
     cout << "\nAverage Waiting Time: " << (totalWT / n) << endl;
     cout << "Average Turnaround Time: " << (totalTAT / n) << endl;
-
-    cout << "\n--- GANTT CHART (SJF) ---" << endl;
-    cout << "0 ";
-    for (int idx : executionOrder) {
-        cout << "|  P" << processes[idx].id << "  |";
-    }
-    cout << endl << "  ";
-    int timeDisplay = 0;
-    for (int idx : executionOrder) {
-        timeDisplay = processes[idx].completionTime;
-        cout << left << setw(7) << timeDisplay;
-    }
-    cout << endl;
 }

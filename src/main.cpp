@@ -13,7 +13,6 @@ int main() {
     svr.Post("/run", [](const httplib::Request& req, httplib::Response& res) {
         string body = req.body;
         
-        // The frontend sends: "algo|arrival,burst;arrival,burst"
         size_t delimiterPos = body.find('|');
         string algo = body.substr(0, delimiterPos);
         string dataStr = body.substr(delimiterPos + 1);
@@ -33,33 +32,44 @@ int main() {
             p.id = id++;
             p.arrivalTime = stoi(arrivalStr);
             p.burstTime = stoi(burstStr);
+            p.startTime = 0; 
+            p.completionTime = 0;
             processes.push_back(p);
         }
 
-        // THIS IS THE MAGIC TRICK: We capture the output of your C++ functions
+        // Capture C++ output
         stringstream buffer;
         streambuf* oldCout = cout.rdbuf(buffer.rdbuf());
 
-        // Call your real algorithms!
         if (algo == "fcfs") {
             calculateFCFS(processes);
         } else if (algo == "sjf") {
             calculateSJF(processes);
         }
 
-        // Restore the normal terminal output
-        cout.rdbuf(oldCout);
-
-        // Get the text that your algorithms printed
+        cout.rdbuf(oldCout); 
         string outputText = buffer.str();
 
-        // Send it back to the web page
+        // Build the Gantt Data
+        string ganttData = "";
+        for (const auto& p : processes) {
+            if (p.completionTime != 0) {
+                ganttData += "P" + to_string(p.id) + "," + 
+                             to_string(p.startTime) + "," + 
+                             to_string(p.completionTime) + "|";
+            }
+        }
+
+        // Send it all back
+        string finalResponse = outputText + "@@@" + ganttData;
+
         res.set_header("Access-Control-Allow-Origin", "*");
-        res.set_content(outputText, "text/plain");
+        res.set_content(finalResponse, "text/plain");
     });
 
+    cout << "=================================================" << endl;
     cout << "ChronoScheduler Server is running on http://localhost:8080" << endl;
-    cout << "Keep this terminal open while using the GUI." << endl;
+    cout << "=================================================" << endl;
     
     svr.listen("localhost", 8080);
 

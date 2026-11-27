@@ -4,8 +4,8 @@
 #include <vector>
 #include "process.h"
 
-// These are the function declarations that the GUI will call
-void calculateFCFS(std::vector<Process> processes);
-void calculateSJF(std::vector<Process> processes);
+// Notice the '&' here. It means "pass by reference" so the updated times are saved!
+void calculateFCFS(std::vector<Process>& processes);
+void calculateSJF(std::vector<Process>& processes);
 
 #endif
