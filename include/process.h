@@ -5,21 +5,13 @@ struct Process {
     int id;
     int arrivalTime;
     int burstTime;
+    int remainingTime;
     int startTime;
+    int firstStartTime;
     int completionTime;
     int turnaroundTime;
     int waitingTime;
-    int pid = 0;
-    int arrivalTime = 0;
-    int burstTime = 0;
-
-    int completionTime = 0;
-    int turnaroundTime = 0;
-    int waitingTime = 0;
-    int responseTime = 0;
-
-    int remainingTime = 0;
-    int firstStartTime = -1;
+    int responseTime;
 };
 
 #endif

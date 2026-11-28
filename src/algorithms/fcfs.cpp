@@ -4,11 +4,9 @@
 
 using namespace std;
 
-// Added '&' here too
 void calculateFCFS(vector<Process>& processes) {
     int currentTime = 0;
-    double totalWT = 0;
-    double totalTAT = 0;
+    double totalWT = 0, totalTAT = 0, totalRT = 0;
 
     cout << "\n--- [FCFS DECISION EXPLAINER LOG] ---" << endl;
 
@@ -26,23 +24,30 @@ void calculateFCFS(vector<Process>& processes) {
         processes[i].completionTime = currentTime + processes[i].burstTime;
         processes[i].turnaroundTime = processes[i].completionTime - processes[i].arrivalTime;
         processes[i].waitingTime = processes[i].turnaroundTime - processes[i].burstTime;
+        
+        // Calculate Response Time
+        processes[i].responseTime = processes[i].startTime - processes[i].arrivalTime;
 
         currentTime = processes[i].completionTime;
 
         totalWT += processes[i].waitingTime;
         totalTAT += processes[i].turnaroundTime;
+        totalRT += processes[i].responseTime;
     }
 
     // Print the Table
     cout << "\n--- FCFS SCHEDULING RESULTS ---" << endl;
     cout << left << setw(10) << "Process" << setw(10) << "Arrival" << setw(10) << "Burst" 
-         << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << endl;
+         << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" 
+         << setw(10) << "Response" << endl;
 
     for (const auto& p : processes) {
         cout << left << "P" << setw(9) << p.id << setw(10) << p.arrivalTime << setw(10) << p.burstTime 
-             << setw(15) << p.completionTime << setw(15) << p.turnaroundTime << setw(10) << p.waitingTime << endl;
+             << setw(15) << p.completionTime << setw(15) << p.turnaroundTime << setw(10) << p.waitingTime 
+             << setw(10) << p.responseTime << endl;
     }
 
     cout << "\nAverage Waiting Time: " << (totalWT / processes.size()) << endl;
     cout << "Average Turnaround Time: " << (totalTAT / processes.size()) << endl;
+    cout << "Average Response Time: " << (totalRT / processes.size()) << endl;
 }

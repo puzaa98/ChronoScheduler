@@ -13,9 +13,13 @@ int main() {
     svr.Post("/run", [](const httplib::Request& req, httplib::Response& res) {
         string body = req.body;
         
-        size_t delimiterPos = body.find('|');
-        string algo = body.substr(0, delimiterPos);
-        string dataStr = body.substr(delimiterPos + 1);
+        size_t delimiterPos1 = body.find('|');
+        string algo = body.substr(0, delimiterPos1);
+        
+        size_t delimiterPos2 = body.find('|', delimiterPos1 + 1);
+        int quantum = stoi(body.substr(delimiterPos1 + 1, delimiterPos2 - delimiterPos1 - 1));
+        
+        string dataStr = body.substr(delimiterPos2 + 1);
 
         vector<Process> processes;
         stringstream ss(dataStr);
@@ -32,12 +36,18 @@ int main() {
             p.id = id++;
             p.arrivalTime = stoi(arrivalStr);
             p.burstTime = stoi(burstStr);
+            
+            p.remainingTime = p.burstTime; 
             p.startTime = 0; 
+            p.firstStartTime = -1; 
             p.completionTime = 0;
+            p.responseTime = 0;
+            p.turnaroundTime = 0;
+            p.waitingTime = 0;
+            
             processes.push_back(p);
         }
 
-        // Capture C++ output
         stringstream buffer;
         streambuf* oldCout = cout.rdbuf(buffer.rdbuf());
 
@@ -45,22 +55,31 @@ int main() {
             calculateFCFS(processes);
         } else if (algo == "sjf") {
             calculateSJF(processes);
+        } else if (algo == "round_robin") {
+            roundRobin(processes, quantum); 
         }
 
         cout.rdbuf(oldCout); 
         string outputText = buffer.str();
 
-        // Build the Gantt Data
         string ganttData = "";
-        for (const auto& p : processes) {
-            if (p.completionTime != 0) {
-                ganttData += "P" + to_string(p.id) + "," + 
-                             to_string(p.startTime) + "," + 
-                             to_string(p.completionTime) + "|";
+        
+        if (algo == "round_robin") {
+            for (const auto& block : rrGanttBlocks) {
+                ganttData += "P" + to_string(block.pid) + "," + 
+                             to_string(block.start) + "," + 
+                             to_string(block.end) + "|";
+            }
+        } else {
+            for (const auto& p : processes) {
+                if (p.completionTime != 0) {
+                    ganttData += "P" + to_string(p.id) + "," + 
+                                 to_string(p.startTime) + "," + 
+                                 to_string(p.completionTime) + "|";
+                }
             }
         }
 
-        // Send it all back
         string finalResponse = outputText + "@@@" + ganttData;
 
         res.set_header("Access-Control-Allow-Origin", "*");

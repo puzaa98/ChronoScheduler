@@ -5,13 +5,11 @@
 
 using namespace std;
 
-// Added '&' here too
 void calculateSJF(vector<Process>& processes) {
     int currentTime = 0;
     int completed = 0;
     int n = processes.size();
-    double totalWT = 0;
-    double totalTAT = 0;
+    double totalWT = 0, totalTAT = 0, totalRT = 0;
     
     vector<bool> isCompleted(n, false); 
 
@@ -26,8 +24,7 @@ void calculateSJF(vector<Process>& processes) {
                 if (processes[i].burstTime < minBurst) {
                     minBurst = processes[i].burstTime;
                     shortestIndex = i;
-                }
-                else if (processes[i].burstTime == minBurst) {
+                } else if (processes[i].burstTime == minBurst) {
                     if (processes[i].arrivalTime < processes[shortestIndex].arrivalTime) {
                         shortestIndex = i;
                     }
@@ -49,9 +46,13 @@ void calculateSJF(vector<Process>& processes) {
         processes[idx].completionTime = currentTime + processes[idx].burstTime;
         processes[idx].turnaroundTime = processes[idx].completionTime - processes[idx].arrivalTime;
         processes[idx].waitingTime = processes[idx].turnaroundTime - processes[idx].burstTime;
+        
+        // Calculate Response Time
+        processes[idx].responseTime = processes[idx].startTime - processes[idx].arrivalTime;
 
         totalWT += processes[idx].waitingTime;
         totalTAT += processes[idx].turnaroundTime;
+        totalRT += processes[idx].responseTime;
 
         currentTime = processes[idx].completionTime;
         isCompleted[idx] = true;
@@ -61,13 +62,16 @@ void calculateSJF(vector<Process>& processes) {
     // Print the Table
     cout << "\n--- SJF SCHEDULING RESULTS ---" << endl;
     cout << left << setw(10) << "Process" << setw(10) << "Arrival" << setw(10) << "Burst" 
-         << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" << endl;
+         << setw(15) << "Completion" << setw(15) << "Turnaround" << setw(10) << "Waiting" 
+         << setw(10) << "Response" << endl;
 
     for (const auto& p : processes) {
         cout << left << "P" << setw(9) << p.id << setw(10) << p.arrivalTime << setw(10) << p.burstTime 
-             << setw(15) << p.completionTime << setw(15) << p.turnaroundTime << setw(10) << p.waitingTime << endl;
+             << setw(15) << p.completionTime << setw(15) << p.turnaroundTime << setw(10) << p.waitingTime 
+             << setw(10) << p.responseTime << endl;
     }
 
     cout << "\nAverage Waiting Time: " << (totalWT / n) << endl;
     cout << "Average Turnaround Time: " << (totalTAT / n) << endl;
+    cout << "Average Response Time: " << (totalRT / n) << endl;
 }
